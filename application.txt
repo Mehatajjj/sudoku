@@ -1,0 +1,471 @@
+#1
+!pip install --user gensim
+from gensim.downloader import load
+
+model = load('word2vec-google-news-300')
+
+def evr():
+    result = model.most_similar(positive=['king', 'woman'], negative=['man'], topn=1)
+    print("\nking - man + woman = ?", result[0][0])
+    print("similarity:", result[0][1])
+
+result = model.most_similar(positive=['paris', 'italy'], negative=['france'], topn=1)
+print("\nparis - france + italy = ?", result[0][0])
+print("similarity:", result[0][1])
+
+result = model.most_similar(positive=['programming'], topn=5)
+print("\nTop 5 words similar to 'programming':")
+for word, similarity in result:
+    print(word, similarity)
+
+evr()
+
+
+
+#2
+!pip install --user gensim scikit-learn matplotlib numpy
+
+import gensim.downloader as api
+import numpy as np
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+
+word_vectors = api.load('glove-wiki-gigaword-100')
+
+def plot_words(words, title="PCA Visualization of Word Embeddings"):
+    valid_words = [word for word in words if word in word_vectors]
+
+    if not valid_words:
+        print(f"None of the words in '{title}' are found in the vocabulary. Skipping.")
+        return
+
+    word_vecs = np.array([word_vectors[word] for word in valid_words])
+    reduced_vecs = PCA(n_components=2).fit_transform(word_vecs)
+
+    plt.figure(figsize=(8, 6))
+    for word, (x, y) in zip(valid_words, reduced_vecs):
+        plt.scatter(x, y, color='blue', marker='o')
+        plt.text(x + 0.02, y + 0.02, word, fontsize=12)
+
+    plt.title(title)
+    plt.xlabel("PCA Component 1")
+    plt.ylabel("PCA Component 2")
+    plt.grid()
+    plt.show()
+
+tech_words = ["algorithm", "database", "machine", "network",
+              "cloud", "security", "software", "hardware",
+              "encryption", "blockchain"]
+
+plot_words(tech_words, "PCA Visualization of Technology Words")
+
+target_word = "coding"
+similar_words = [word for word, similarity in word_vectors.most_similar(target_word, topn=5)]
+
+print(f"Target word: {target_word}")
+print(f"Similar words: {similar_words}")
+
+
+
+#3
+!pip install --user --upgrade gensim numpy==1.24.3 scipy==1.10.1
+
+from gensim.models import Word2Vec
+from nltk.corpus import stopwords
+import nltk
+
+nltk.download('stopwords')
+stop_words = set(stopwords.words('english'))
+
+corpus = [
+    "The patient was prescribed antibiotics to treat the infection".split(),
+    "The doctor examined the patient and noted the symptoms".split(),
+    "Hospitals provide care for patients suffering from various diseases".split(),
+    "The court ruled in favor of the defendant after reviewing the evidence".split(),
+    "Legal proceedings in court require substantial evidence".split(),
+    "The judge delivered a verdict in the high-profile court case".split(),
+    "Diagnosis of diabetes mellitus requires specific blood tests".split(),
+    "Legal contracts must be signed in the presence of a witness".split(),
+    "Symptoms of the disease include fever, cough, and fatigue".split()
+]
+
+filtered_corpus = [[word.lower() for word in sentence if word.lower() not in stop_words] for sentence in corpus]
+
+model = Word2Vec(sentences=filtered_corpus, vector_size=100, window=5, min_count=1, workers=4, epochs=20)
+
+def get_similar_words(word):
+    try:
+        similar_words = model.wv.most_similar(word, topn=5)
+        print(f"Words similar to '{word}': {[w[0] for w in similar_words]}")
+    except KeyError:
+        print(f"'{word}' not found in vocabulary.")
+
+get_similar_words("patient")
+get_similar_words("court")
+
+
+#4
+from gensim.downloader import load
+from transformers import pipeline
+import torch
+
+model = load("glove-wiki-gigaword-50")
+
+def enrich(prompt):
+    words = prompt.split()
+    ep = " ".join(model.most_similar(word, topn=1)[0][0] if word in model else word for word in words)
+    return ep
+
+op = "lung cancer"
+ep = enrich(op)
+
+generator = pipeline("text-generation", model="gpt2")
+
+print("Original Prompt:", op)
+print("Enriched Prompt:", ep)
+
+generator = pipeline("text-generation", model="gpt2", tokenizer="gpt2")
+response = generator(op, max_length=200, num_return_sequences=1, no_repeat_ngram_size=2, top_p=0.95, temperature=0.7)
+print("Prompt response\n", response[0]['generated_text'])
+
+response = generator(ep, max_length=200, num_return_sequences=1, no_repeat_ngram_size=2, top_p=0.95, temperature=0.7)
+print("Enriched prompt response\n", response[0]['generated_text'])
+
+#5
+!pip install --upgrade gensim==4.2.0
+!pip install numpy==1.24.3
+
+import gensim.downloader as api
+import random
+
+glove_vectors = api.load("glove-wiki-gigaword-300")
+
+def get_similar_words(word, topn=5):
+    try:
+        return [w for w, _ in glove_vectors.most_similar(word, topn=topn)]
+    except KeyError:
+        return []
+
+def create_paragraph(word):
+    words = [word] + get_similar_words(word)
+
+    if len(words) == 1:
+        return f"Could not generate a paragraph for '{word}'. Try another word!"
+
+    random.shuffle(words)
+    return (f"In a {words[0]} world, a {words[1]} embarked on a journey to find {words[2]}."
+            f"Through {words[3]} lands and hidden {words[4]}, new adventures awaited.")
+
+# Get user input
+seed = input("Enter a word: ").strip().lower()
+print("\nGenerated Paragraph:\n", create_paragraph(seed))
+
+
+#6
+from transformers import pipeline
+
+sentiment_pipeline = pipeline("sentiment-analysis")
+
+
+sentences = [
+    "I love studying machine learning!", # Positive
+    "The exam was really tough and stressful.", # Negative
+    "This course is amazing, I am learning a lot!", # Positive
+    "I am feeling very frustrated with the assignments.", # Negative
+    "It is a regular day with nothing special happening." # Neutral
+]
+
+
+results = sentiment_pipeline(sentences)
+
+
+for sentence, result in zip(sentences, results):
+    print(f"Sentence: {sentence}")
+    print(f"Sentiment: {result['label']} (Confidence: {result['score']:.2f})")
+    print("-" * 50)
+	
+	
+#7
+from transformers import pipeline
+
+
+summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+
+def summarize_text(text, max_length=100, min_length=30):
+    """  
+    Summarizes the given text using a pre-trained model.
+
+    Parameters:
+        text (str): The input passage to summarize.
+        max_length (int): Maximum length of the summary.
+        min_length (int): Minimum length of the summary.
+
+    Returns:
+        str: The summarized text.
+    """
+    if len(text.split()) < min_length: # Avoid issues with very short text
+        return "Text is too short to summarize."
+
+    summary = summarizer(text, max_length=max_length, min_length=min_length, do_sample=False)
+    return summary[0]['summary_text']
+
+print("Enter the text you want to summarize:")
+user_input = input()
+
+summary_result = summarize_text(user_input)
+
+print("\nSummary:", summary_result)
+
+#8
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
+from langchain_community.llms import Cohere
+from langchain_community.document_loaders import TextLoader
+import os
+
+cohere_api_key = "bkKk02UW4h5P3ZNKTjG2gbcqzCuAYXZvRXroelp7"
+
+file_path = 'C:\\Users\\sathy\\OneDrive\\Desktop\\html1.txt'
+loader = TextLoader(file_path)
+documents = loader.load()
+
+text_content = documents[0].page_content
+
+prompt_template = PromptTemplate(
+    input_variables=["text"],
+    template="Analyze the following text and summarize its key points:\n\nText: {text}\n\nSummary:",
+)
+
+cohere_llm = Cohere(cohere_api_key=cohere_api_key, temperature=0.7)
+
+chain = LLMChain(llm=cohere_llm, prompt=prompt_template)
+
+output = chain.run(text=text_content)  # Fixed parameter name from text-text_content to text=text_content
+
+print("Generated Summary:")
+print(output)
+
+#9
+from pydantic import BaseModel
+import wikipediaapi
+
+class InstitutionDetails(BaseModel):
+    name: str
+    founder: str
+    founded_year: str
+    branches: str
+    employees: str
+    summary: str
+
+def fetch_institution_details(institution_name: str) -> InstitutionDetails:
+  
+    wiki_wiki = wikipediaapi.Wikipedia(
+        language="en"
+    )
+    page = wiki_wiki.page(institution_name)
+
+    if not page.exists():
+        raise ValueError(f"No Wikipedia page found for '{institution_name}'")
+
+    summary = ". ".join(page.summary.split(". ")[:4]) + "."
+
+   
+    data = {
+        "name": institution_name,
+        "founder": "Not found",
+        "founded_year": "Not found", 
+        "branches": "Not found",
+        "employees": "Not found",
+        "summary": summary
+    }
+
+
+    full_text = page.text.lower()
+    if "founder" in full_text:
+        data["founder"] = "Found (see summary)"
+    if "founded" in full_text:
+        data["founded_year"] = "Found (see summary)"
+    if "branch" in full_text:
+        data["branches"] = "Found (see summary)"
+    if "employee" in full_text:
+        data["employees"] = "Found (see summary)"
+    
+    return InstitutionDetails(**data)
+
+if __name__ == "__main__":
+    try:
+        name = input("Enter institution name: ").strip()
+        details = fetch_institution_details(name)
+        print(details.model_dump_json(indent=2))
+    except Exception as e:
+        print(f"Error: {str(e)}")
+		
+#10
+!pip install requests PyMuPDF langchain faiss-cpu sentence-transformers numpy python-dotenv
+
+import os
+import fitz  
+from getpass import getpass
+from langchain_community.llms import Cohere 
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+import numpy as np
+import faiss
+from sentence_transformers import SentenceTransformer
+
+class IPCChatbot:
+    def __init__(self):
+        self.pdf_path = None
+        self.texts = []
+        self.model = None
+        self.document_embeddings = None
+        self.index = None
+        self.llm = None
+        
+    def load_pdf(self, pdf_path=None):
+        """Load and extract text from IPC PDF"""
+        if pdf_path is None:
+            pdf_path = input("Enter path to IPC PDF file: ").strip('"')  
+        
+        try:
+            if not os.path.exists(pdf_path):
+                raise FileNotFoundError(f"File not found: {pdf_path}")
+                
+            self.pdf_path = pdf_path
+            pdf_document = fitz.open(pdf_path)
+            ipc_text = ""
+            
+            for page_num in range(pdf_document.page_count):
+                page = pdf_document.load_page(page_num)
+                ipc_text += page.get_text()
+                
+            with open('IPC_text.txt', 'w', encoding="utf-8") as text_file:
+                text_file.write(ipc_text)
+                
+            print("Text extracted successfully!")
+            return ipc_text
+            
+        except Exception as e:
+            print(f"Error loading PDF: {e}")
+            return None
+
+    def setup_embeddings(self, ipc_text):
+        """Set up text embeddings and FAISS index"""
+        if not ipc_text:
+            print("No text available for processing")
+            return False
+            
+        try:
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=1000, 
+                chunk_overlap=200
+            )
+            self.texts = text_splitter.split_text(ipc_text)
+            
+            self.model = SentenceTransformer('all-MiniLM-L6-v2')
+            self.document_embeddings = self.model.encode(
+                self.texts, 
+                convert_to_tensor=True
+            )
+            
+            self.index = faiss.IndexFlatL2(self.document_embeddings.shape[1])
+            self.index.add(self.document_embeddings.cpu().numpy())
+            
+            print("Embeddings and index created successfully!")
+            return True
+            
+        except Exception as e:
+            print(f"Error setting up embeddings: {e}")
+            return False
+
+    def setup_llm(self):
+        """Set up the Cohere language model"""
+        try:
+            api_key = os.getenv("COHERE_API_KEY")
+            if not api_key:
+                api_key = getpass("Enter your Cohere API key: ")
+                os.environ["COHERE_API_KEY"] = api_key
+                
+            self.llm = Cohere(
+                model="command",  # Updated model name
+                temperature=0.7
+            )
+            print("Language model initialized successfully!")
+            return True
+            
+        except Exception as e:
+            print(f"Error setting up language model: {e}")
+            return False
+
+    def get_response(self, user_query):
+        """Get response for user query"""
+        if not user_query or not isinstance(user_query, str):
+            return "Please provide a valid question."
+            
+        try:
+            query_embedding = self.model.encode(
+                [user_query], 
+                convert_to_tensor=True
+            )
+            
+            _, indices = self.index.search(
+                query_embedding.cpu().numpy(), 
+                k=1
+            )
+            most_similar_text = self.texts[indices[0][0]]
+            
+            prompt = f"""
+            The user has asked a question related to the Indian Penal Code.
+            Below is the relevant section from the Indian Penal Code:
+
+            {most_similar_text}
+
+            The user's question: {user_query}
+
+            Please provide an accurate answer based on the above IPC section.
+            If the question cannot be answered from the IPC, say so.
+            """
+            
+            response = self.llm(prompt)
+            return response
+            
+        except Exception as e:
+            print(f"Error generating response: {e}")
+            return "Sorry, I encountered an error processing your request."
+
+    def chat_loop(self):
+        """Interactive chat loop"""
+        print("\nIndian Penal Code Chatbot")
+        print("Type 'quit' to exit\n")
+        
+        while True:
+            user_input = input("Ask a question about the Indian Penal Code: ")
+            
+            if user_input.lower() in ['quit', 'exit', 'q']:
+                print("Goodbye!")
+                break
+                
+            response = self.get_response(user_input)
+            print(f"\nChatbot Response: {response}\n")
+
+if __name__ == "__main__":
+    
+    print("Please ensure you have these packages installed:")
+    print("pip install pymupdf langchain-community faiss-cpu sentence-transformers python-dotenv")
+    
+    chatbot = IPCChatbot()
+    
+   
+    ipc_text = chatbot.load_pdf()
+    if not ipc_text:
+        exit(1)
+        
+   
+    if not chatbot.setup_embeddings(ipc_text):
+        exit(1)
+        
+   
+    if not chatbot.setup_llm():
+        exit(1)
+        
+   
+    chatbot.chat_loop()
