@@ -156,7 +156,6 @@ def create_paragraph(word):
     return (f"In a {words[0]} world, a {words[1]} embarked on a journey to find {words[2]}."
             f"Through {words[3]} lands and hidden {words[4]}, new adventures awaited.")
 
-# Get user input
 seed = input("Enter a word: ").strip().lower()
 print("\nGenerated Paragraph:\n", create_paragraph(seed))
 
@@ -203,7 +202,7 @@ def summarize_text(text, max_length=100, min_length=30):
     Returns:
         str: The summarized text.
     """
-    if len(text.split()) < min_length: # Avoid issues with very short text
+    if len(text.split()) < min_length: 
         return "Text is too short to summarize."
 
     summary = summarizer(text, max_length=max_length, min_length=min_length, do_sample=False)
@@ -225,7 +224,7 @@ import os
 
 cohere_api_key = "bkKk02UW4h5P3ZNKTjG2gbcqzCuAYXZvRXroelp7"
 
-file_path = 'C:\\Users\\sathy\\OneDrive\\Desktop\\html1.txt'
+file_path = 'C:\\Users\\User\\Documents\\html.txt'
 loader = TextLoader(file_path)
 documents = loader.load()
 
